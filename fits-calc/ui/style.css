@@ -1,0 +1,38 @@
+﻿:root { --bg:#0f1115; --fg:#e8e8ea; --muted:#a9abb3; --card:#171a21; --line:#2a2f3a; --btn:#2f6feb; --btn2:#3a3f4b; }
+* { box-sizing: border-box; font-family: ui-sans-serif, system-ui, Segoe UI, Roboto, Arial; }
+body { margin:0; background:var(--bg); color:var(--fg); }
+.bar { padding:14px 18px; border-bottom:1px solid var(--line); display:flex; gap:18px; align-items:baseline; }
+.title { font-size:18px; font-weight:700; }
+.hint { color:var(--muted); font-size:12px; }
+
+.grid { display:grid; grid-template-columns: 360px 1fr; gap:14px; padding:14px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; }
+.card.full { grid-column: 1 / -1; }
+
+h2 { margin:0 0 10px 0; font-size:14px; font-weight:700; color:var(--fg); }
+.small { color:var(--muted); font-size:12px; margin: 0 0 10px 0; }
+
+.row { display:grid; grid-template-columns: 110px 1fr; gap:10px; margin:8px 0; align-items:center; }
+label { color:var(--muted); font-size:12px; }
+input[type="text"] { width:100%; padding:10px; border-radius:10px; border:1px solid var(--line); background:#0f1218; color:var(--fg); }
+input[type="file"] { width:100%; }
+
+.actions { display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
+button { padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:var(--btn2); color:var(--fg); cursor:pointer; }
+button.primary { background:var(--btn); border-color:#1f4fb7; }
+button:disabled { opacity:0.45; cursor:not-allowed; }
+
+.status { margin-top:10px; color:var(--muted); font-size:12px; min-height: 18px; white-space: pre-wrap; }
+
+.tabs { display:flex; gap:8px; margin-bottom:10px; }
+.tab { padding:8px 10px; border-radius:10px; }
+.tab.active { background:var(--btn); border-color:#1f4fb7; }
+
+table { width:100%; border-collapse: collapse; margin-top:10px; }
+th, td { border-bottom:1px solid var(--line); padding:8px 6px; font-size:12px; }
+th { color:var(--muted); text-align:left; font-weight:600; }
+
+/* checkbox "Формулы" в шапке вкладок */
+.chk { margin-left:auto; display:flex; gap:8px; align-items:center; color:var(--muted); font-size:12px; }
+.chk input { transform: translateY(1px); }
+

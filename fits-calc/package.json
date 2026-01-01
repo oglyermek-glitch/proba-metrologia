@@ -1,0 +1,19 @@
+﻿{
+    "name":  "fits-calc",
+    "version":  "1.0.0",
+    "main":  "index.js",
+    "scripts":  {
+                    "calc":  "node ./src/cli.js",
+                    "test":  "echo \"Error: no test specified\" \u0026\u0026 exit 1",
+                    "ui":  "electron ./ui/main.js"
+                },
+    "keywords":  [
+
+                 ],
+    "author":  "",
+    "license":  "ISC",
+    "description":  "",
+    "devDependencies":  {
+                            "electron":  "^39.2.7"
+                        }
+}

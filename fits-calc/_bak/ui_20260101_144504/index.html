@@ -1,0 +1,102 @@
+﻿<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fits Calc UI</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="bar">
+    <div class="title">Fits Calc UI</div>
+    <div class="hint">Расчёт посадок по таблицам (мкм целые, мм строкой)</div>
+  </header>
+
+  <main class="grid">
+    <section class="card">
+      <h2>Одиночный расчёт</h2>
+
+      <div class="row">
+        <label>D, мм</label>
+        <input id="D" type="text" value="25" placeholder="например 25 или 25.5" />
+      </div>
+
+      <div class="row">
+        <label>Квалитет отверстия (IT)</label>
+        <select id="holeIT"></select>
+      </div>
+
+      <div class="row">
+        <label>Поле допуска отверстия</label>
+        <select id="holeZone"></select>
+      </div>
+
+      <div class="row">
+        <label>Квалитет вала (IT)</label>
+        <select id="shaftIT"></select>
+      </div>
+
+      <div class="row">
+        <label>Поле допуска вала</label>
+        <select id="shaftZone"></select>
+      </div>
+
+      <div class="row">
+        <label>Сборка</label>
+        <input id="fitStr" type="text" value="H7/g6" readonly />
+      </div>
+
+      <div class="actions" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <button id="btnCalc">Рассчитать</button>
+        <button id="btnCopyJson" disabled>Копировать JSON</button>
+        <button id="btnSaveJson" disabled>Скачать JSON</button>
+
+        <label class="chk" style="margin-left:auto; display:flex; gap:8px; align-items:center; font-size:12px;">
+          <input id="chkAuto" type="checkbox" />
+          Автообновление
+        </label>
+      </div>
+
+      <div id="status" class="status"></div>
+    </section>
+
+    <section class="card">
+      <div class="row" style="align-items:center;">
+        <h2 style="margin:0;">Результат</h2>
+
+        <div style="margin-left:16px; display:flex; gap:8px;">
+          <button id="tabMM" class="pill active">мм</button>
+          <button id="tabMKM" class="pill">мкм</button>
+        </div>
+
+        <label class="chk" style="margin-left:auto; display:flex; gap:8px; align-items:center; font-size:12px;">
+          <input id="chkFormulas" type="checkbox" />
+          Формулы
+        </label>
+      </div>
+
+      <div id="out"></div>
+    </section>
+
+    <section class="card" style="grid-column:1 / -1;">
+      <h2>Пакетный CSV</h2>
+      <div class="small">Формат строк: D;hole;shaft (или через запятую). Заголовок допускается.</div>
+
+      <div class="row">
+        <label>CSV файл</label>
+        <input id="csvFile" type="file" accept=".csv,.txt" />
+      </div>
+
+      <div class="actions">
+        <button id="btnRunBatch" disabled>Посчитать пакет</button>
+        <button id="btnDownloadCsv" disabled>Скачать out.csv</button>
+        <button id="btnDownloadJsonBatch" disabled>Скачать out.json</button>
+      </div>
+
+      <div id="batchStatus" class="status"></div>
+    </section>
+  </main>
+
+  <script src="./renderer.js"></script>
+</body>
+</html>

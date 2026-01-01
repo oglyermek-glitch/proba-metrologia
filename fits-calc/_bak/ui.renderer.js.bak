@@ -1,0 +1,278 @@
+﻿"use strict";
+
+const el = (id) => document.getElementById(id);
+
+const state = {
+  lastResult: null,
+  view: "mm",          // "mm" | "mkm"
+  showFormulas: false,
+  auto: false
+};
+
+function setStatus(msg) { el("status").textContent = msg || ""; }
+
+function normNum(s) { return String(s ?? "").trim().replace(",", "."); }
+function getD() {
+  const x = Number(normNum(el("D")?.value));
+  if (!Number.isFinite(x) || x <= 0) throw new Error("D должен быть > 0");
+  return x;
+}
+
+function hasSelectUI() {
+  return !!(el("holeZone") && el("holeIT") && el("shaftZone") && el("shaftIT") && el("fitStr"));
+}
+
+function fillSelect(sel, values, prefer) {
+  sel.innerHTML = "";
+  const o0 = document.createElement("option");
+  o0.value = "";
+  o0.textContent = "—";
+  sel.appendChild(o0);
+
+  for (const v of (values || [])) {
+    const o = document.createElement("option");
+    o.value = String(v);
+    o.textContent = String(v);
+    sel.appendChild(o);
+  }
+
+  if (prefer && (values || []).includes(prefer)) {
+    sel.value = prefer;
+    return;
+  }
+  if (sel.options.length > 1) sel.selectedIndex = 1;
+}
+
+function updateFitStr() {
+  if (!hasSelectUI()) return;
+  const hz = el("holeZone").value;
+  const hi = el("holeIT").value;
+  const sz = el("shaftZone").value;
+  const si = el("shaftIT").value;
+  el("fitStr").value = `${hz || ""}${hi || ""}/${sz || ""}${si || ""}`;
+}
+
+async function refreshZones() {
+  const D = getD();
+  const r = await window.fitApi.options({ D, mode: "zones" });
+
+  fillSelect(el("holeZone"), r.holeZones || [], "H");
+  fillSelect(el("shaftZone"), r.shaftZones || [], "h");
+}
+
+async function refreshIT(kind) {
+  const D = getD();
+  const zone = el(kind === "hole" ? "holeZone" : "shaftZone").value;
+  const selIT = el(kind === "hole" ? "holeIT" : "shaftIT");
+
+  if (!zone) { fillSelect(selIT, [], null); return; }
+
+  const r = await window.fitApi.options({ D, mode: "it", kind, zone });
+  const prefer = (kind === "hole") ? "7" : "6";
+  fillSelect(selIT, r.its || [], prefer);
+}
+
+async function refreshAllOptions() {
+  if (!hasSelectUI()) return;
+  await refreshZones();
+  await refreshIT("hole");
+  await refreshIT("shaft");
+  updateFitStr();
+}
+
+function buildComputePayload() {
+  const D = getD();
+
+  // режим селектов
+  if (hasSelectUI()) {
+    const hz = el("holeZone").value, hi = el("holeIT").value;
+    const sz = el("shaftZone").value, si = el("shaftIT").value;
+    if (!hz || !hi || !sz || !si) throw new Error("Выберите зону и IT для отверстия и вала.");
+    return { D, hole: `${hz}${hi}`, shaft: `${sz}${si}` };
+  }
+
+  // fallback: старый режим (input hole/shaft)
+  const hole = el("hole")?.value?.trim();
+  const shaft = el("shaft")?.value?.trim();
+  if (!hole || !shaft) throw new Error("Введите hole и shaft.");
+  return { D, hole, shaft };
+}
+
+// ---------- Формулы (колонка справа) ----------
+const FORMULAS = {
+  Dmax: "D + ES",
+  Dmin: "D + EI",
+  Dm: "(Dmax + Dmin) / 2",
+  dmax: "D + es",
+  dmin: "D + ei",
+  dm: "(dmax + dmin) / 2",
+
+  ES: "Dmax - D",
+  EI: "Dmin - D",
+  Em: "(ES + EI) / 2",
+  es: "dmax - D",
+  ei: "dmin - D",
+  em: "(es + ei) / 2",
+
+  Smax: "Dmax - dmin",
+  Smin: "Dmin - dmax",
+  Sm: "(Smax + Smin) / 2",
+
+  Nmax: "dmax - Dmin",
+  Nmin: "dmin - Dmax",
+  Nm: "(Nmax + Nmin) / 2",
+
+  TD: "Dmax - Dmin",
+  Td: "dmax - dmin",
+  Ts: "Smax - Smin (= TD - Td)",
+  TN: "Nmax - Nmin (= TD - Td)"
+};
+
+function toTable(obj, title) {
+  const rows = Object.entries(obj || {}).map(([k, v]) => {
+    const f = state.showFormulas ? (FORMULAS[k] || "") : "";
+    return `
+      <tr>
+        <th>${k}</th>
+        <td>${String(v)}</td>
+        ${state.showFormulas ? `<td class="small mono">${f}</td>` : ""}
+      </tr>
+    `;
+  }).join("");
+
+  return `
+    <div class="blk">
+      <div class="small" style="margin-top:8px">${title}</div>
+      <table><tbody>${rows}</tbody></table>
+    </div>
+  `;
+}
+
+function renderResult(res) {
+  if (!res) { el("out").innerHTML = ""; return; }
+
+  const mm = {
+    deviations: res["deviations_мм"],
+    limits: res["limits_мм"],
+    means: res["means_мм"],
+    tolerances: res["tolerances_мм"],
+    fit_tolerance: res["fit_tolerance_мм"],
+    clearance: res["clearance_мм"],
+    interference: res["interference_мм"]
+  };
+
+  const mkm = {
+    deviations: res["deviations_мкм"],
+    limits: res["limits_мкм"],
+    means: res["means_мкм"],
+    tolerances: res["tolerances_мкм"],
+    fit_tolerance: res["fit_tolerance_мкм"],
+    clearance: res["clearance_мкм"],
+    interference: res["interference_мкм"]
+  };
+
+  let src = (state.view === "mm") ? mm : mkm;
+
+  // требование: во вкладке "мкм" абсолютные размеры оставить в мм
+  if (state.view === "mkm") {
+    src = {
+      ...mkm,
+      limits: mm.limits,
+      means: {
+        Dm: mm.means.Dm,
+        dm: mm.means.dm,
+        Em: mkm.means.Em,
+        em: mkm.means.em,
+        Sm: mkm.means.Sm,
+        Nm: mkm.means.Nm
+      }
+    };
+  }
+
+  const unitLabel = (state.view === "mm")
+    ? "мм"
+    : "мкм (Dmax/Dmin/dmax/dmin и Dm/dm  мм)";
+
+  const head = `
+    <div class="small">
+      D=${res.input.D} ${res.input.hole}/${res.input.shaft} | nomCode=${res.nomCode}<br>
+      Посадка: ${res.classification.fitType}; Система: ${res.classification.system}<br>
+      Единицы: ${unitLabel}
+    </div>
+  `;
+
+  el("out").innerHTML =
+    head +
+    toTable(src.deviations, (state.view === "mkm" ? "Отклонения (мкм)" : "Отклонения (мм)")) +
+    toTable(src.limits, "Предельные размеры (мм)") +
+    toTable(src.means, (state.view === "mkm" ? "Средние (Dm/dm  мм; Em/em/Sm/Nm  мкм)" : "Средние (мм)")) +
+    toTable(src.tolerances, (state.view === "mkm" ? "Допуски деталей (мкм)" : "Допуски деталей (мм)")) +
+    toTable(src.fit_tolerance, (state.view === "mkm" ? "Допуски посадки (мкм)" : "Допуски посадки (мм)")) +
+    toTable(src.clearance, (state.view === "mkm" ? "Зазоры (мкм)" : "Зазоры (мм)")) +
+    toTable(src.interference, (state.view === "mkm" ? "Натяги (мкм)" : "Натяги (мм)"));
+}
+
+async function doCalc() {
+  setStatus("");
+  try {
+    const payload = buildComputePayload();
+    const res = await window.fitApi.compute(payload);
+    state.lastResult = res;
+    renderResult(res);
+    el("btnCopyJson").disabled = false;
+    el("btnSaveJson").disabled = false;
+    setStatus("OK");
+  } catch (e) {
+    state.lastResult = null;
+    renderResult(null);
+    el("btnCopyJson").disabled = true;
+    el("btnSaveJson").disabled = true;
+    setStatus("ERROR: " + (e && e.message ? e.message : String(e)));
+  }
+}
+
+function setTab(view) {
+  state.view = view;
+  el("tabMM")?.classList.toggle("active", view === "mm");
+  el("tabMKM")?.classList.toggle("active", view === "mkm");
+  renderResult(state.lastResult);
+}
+
+async function onAnyChange() {
+  updateFitStr();
+  if (state.auto) await doCalc();
+}
+
+function wire() {
+  el("btnCalc")?.addEventListener("click", doCalc);
+  el("tabMM")?.addEventListener("click", () => setTab("mm"));
+  el("tabMKM")?.addEventListener("click", () => setTab("mkm"));
+
+  el("chkAuto")?.addEventListener("change", (e) => { state.auto = !!e.target.checked; });
+  el("chkFormulas")?.addEventListener("change", (e) => { state.showFormulas = !!e.target.checked; renderResult(state.lastResult); });
+
+  // селекты
+  if (hasSelectUI()) {
+    el("D").addEventListener("input", async () => {
+      try { await refreshAllOptions(); if (state.auto) await doCalc(); }
+      catch (e) { setStatus("ERROR: " + (e && e.message ? e.message : String(e))); }
+    });
+
+    el("holeZone").addEventListener("change", async () => { await refreshIT("hole"); await onAnyChange(); });
+    el("shaftZone").addEventListener("change", async () => { await refreshIT("shaft"); await onAnyChange(); });
+
+    el("holeIT").addEventListener("change", onAnyChange);
+    el("shaftIT").addEventListener("change", onAnyChange);
+  }
+}
+
+(async () => {
+  try {
+    wire();
+    if (hasSelectUI()) await refreshAllOptions();
+    setTab("mm");
+    setStatus("OK");
+  } catch (e) {
+    setStatus("ERROR: " + (e && e.message ? e.message : String(e)));
+  }
+})();
